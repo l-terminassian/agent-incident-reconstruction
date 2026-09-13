@@ -1,0 +1,12 @@
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    best = cur = 1
+    for i in range(1, len(xs)):
+        if (xs[i] & 1) == (xs[i - 1] & 1):
+            cur += 1
+            if cur > best:
+                best = cur
+        else:
+            cur = 1
+    return best

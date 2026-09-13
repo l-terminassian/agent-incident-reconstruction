@@ -1,0 +1,566 @@
+Let me start by exploring the working directory to understand the task.
+
+Task: Implement `solve(xs: list[int]) -> int`. Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+So we need the longest subsequence (not necessarily contiguous) such that the differences between consecutive elements alternate in sign: positive, negative, positive, negative... or negative, positive, negative, positive... Zero differences are probably not allowed (a difference of 0 is neither positive nor negative, so it breaks the alternation).
+
+This is similar to the "wiggle subsequence" problem (LeetCode 376). In the wiggle subsequence problem, consecutive differences must strictly alternate between positive and negative. The greedy solution is: count the number of "turning points". Actually, the classic result: the length of the longest wiggle subsequence equals 1 + the number of sign changes in the sequence of non-zero differences (after removing zeros and collapsing consecutive same-sign differences).
+
+Wait, but the classic LeetCode problem allows the first difference to be either positive or negative, and the answer is computed greedily: count peaks and valleys. The answer is: number of local extrema + endpoints appropriately.
+
+Actually, for the longest wiggle subsequence, the greedy: iterate, track the previous difference's sign; count when the sign of the difference changes (ignoring zeros). Length = 1 + number of sign changes in the filtered difference sequence... let me verify: for sequence [1,7,4,9,2,5], differences: +6, -3, +5, -7, +3 → 5 sign changes, length = 1+5 = 6. Correct.
+
+For [1,17,5,10,13,15,10,5,16,8]: differences: +16, -12, +5, +3, +2, -5, -5, +11, -8. Filter zeros (none), collapse consecutive same signs: +, -, +, -, +, - → 6 sign changes → length 7. LeetCode's answer for this example is 7. Correct.
+
+But wait — is the greedy solution always optimal for the longest subsequence (not necessarily contiguous)? Yes, the classic result: the length of the longest wiggle subsequence equals 1 + the number of sign changes in the sequence of consecutive differences after removing zeros (i.e., the number of runs of same-sign differences). This is provable: you can pick one element from each "run".
+
+Actually, more precisely: consider the sequence of differences d_i = xs[i+1] - xs[i]. Remove zeros. Then the longest wiggle subsequence length = 1 + (number of sign changes in the filtered sequence) = 1 + (number of runs of same sign). Because we can pick the first element, then for each run pick the extreme (max if run is positive, min if negative), etc.
+
+Hmm wait, let me be careful. Let me think again. The filtered difference sequence has runs: e.g. signs [+, +, -, -, +]. Runs: +, -, + → 3 runs. Length = 1 + 3 = 4? Let me construct: xs = [1, 3, 5, 4, 2, 3]. Differences: +2, +2, -1, -2, +1. Runs: +, -, +. Greedy: pick 1, then 5 (end of + run), then 2 (end of - run), then 3 (end of + run) → [1, 5, 2, 3], differences +4, -3, +1 → wiggle of length 4. Can we do better? Maximum possible: length 5 would require 4 differences alternating: +,-,+,- or -,+,-,+. Starting from 1: +4 (to 5), -3 (to 2), +1 (to 3), then we'd need a negative difference to something after 3 — but 3 is the last element. So no. What about starting later? [3, 5, 2, 3] is also 4. So 4 is correct.
+
+So the algorithm:
+```python
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    prev = 0  # sign of the previous non-zero difference
+    length = 1
+    for i in range(1, len(xs)):
+        d = xs[i] - xs[i-1]
+        if d > 0:
+            s = 1
+        elif d < 0:
+            s = -1
+        else:
+            continue
+        if s
+
+---
+
+Let me start by inspecting the working directory to understand the project structure.
+
+---
+
+Let's read SPEC.md to understand the task.
+
+---
+
+Let me understand the problem. I need to find the longest subsequence (not necessarily contiguous) whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+Wait, let me think carefully. "subsequence whose consecutive differences strictly alternate between positive and negative."
+
+So we have a subsequence x_{i1}, x_{i2}, ..., x_{ik}. The consecutive differences are:
+- d1 = x_{i2} - x_{i1}
+- d2 = x_{i3} - x_{i2}
+- ...
+- d_{k-1} = x_{ik} - x_{i(k-1)}
+
+These must strictly alternate between positive and negative. So d1 > 0, d2 < 0, d3 > 0, d4 < 0, ... OR d1 < 0, d2 > 0, d3 < 0, ...
+
+No zero differences allowed (since they must be strictly positive or strictly negative).
+
+Let me think about this. This is similar to the "wiggle subsequence" problem! In the classic wiggle subsequence problem, we find the longest subsequence where the differences alternate between positive and negative.
+
+Actually, the classic "Wiggle Subsequence" problem (LeetCode 376) is exactly this. The greedy solution is:
+
+```python
+def wiggleMaxLength(nums):
+    if len(nums) < 2:
+        return len(nums)
+    prev_down = 0
+    prev_up = 0
+    n = len(nums)
+    for i in range(1, n):
+        if nums[i] > nums[i-1]:
+            prev_up = prev_down + 1
+        elif nums[i] < nums[i-1]:
+            prev_down = prev_up + 1
+    return max(prev_up, prev_down)
+```
+
+Wait, but the classic wiggle subsequence allows... let me recall. In the classic problem, the differences must strictly alternate between positive and negative, and zero differences are not counted. Actually let me recall the exact definition.
+
+LeetCode 376: "A sequence, in which the differences between successive elements strictly alternate between positive and negative, is called a wiggle sequence." So the first difference can be either positive or negative.
+
+The greedy solution counts. Let me verify with examples.
+
+For nums = [1, 7, 4, 9, 2, 5]:
+- i=1: 7>1, prev_up = 0+1 = 1, prev_down=0
+- i=2: 4<7, prev_down = 1+1 = 2, prev_up=1
+- i=3: 9>4, prev_up = 2+1 = 3, prev_down=2
+- i=4: 2<9, prev_down = 3+1 = 4, prev_up=3
+- i=5: 5>2, prev_up = 4+1 = 5, prev_down=4
+- return max(5, 4) = 5
+
+The answer is 5, e.g. [1, 7, 4, 9, 2] or [1, 7, 4, 9, 2, 5]... wait that's 6 elements. Let me check [1,7,4,9,2,5]: diffs are 6, -3, 5, -7, 3. That's +,-,+,-,+ which is 5 differences, 6 elements. That's a valid wiggle! So the answer should be 6, not 5.
+
+Hmm wait, let me recompute. [1, 7, 4, 9, 2, 5]:
+- 7-1 = 6 > 0
+- 4-7 = -3 < 0
+- 9-4 = 5 > 0
+- 2-9 = -7 < 0
+- 5-2 = 3 > 0
+
+So +,-,+,-,+ — that's a valid wiggle sequence with 6 elements. So the answer should be 6.
+
+But the greedy gave 5. Let me recheck.
+
+Oh wait, I think I made an error. Let me redo:
+- i=1: nums[1]=7 > nums[0]=1, prev_up = prev_down + 1 = 0 + 1 = 1, prev_down = 0
+- i=2: nums[2]=4 < nums[1]=7, prev_down = prev_up + 1 = 1 + 1 = 2, prev_up = 1
+- i=3: nums[3
+
+---
+
+Let me look at the tests directory to understand the test fixtures.
+
+---
+
+I need to be careful here. The task says I must not read test or expected-output files. The `tests/expected.json` file is clearly an expected-output file. I should not read it.
+
+Let me just implement the solution based on the spec. Let me think about the algorithm.
+
+The problem: Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+This is the classic "Wiggle Subsequence" problem (LeetCode 376).
+
+Let me think about the greedy/DP approach.
+
+The standard wiggle subsequence DP:
+- up[i] = length of longest wiggle subsequence ending at i where the last difference is positive (up)
+- down[i] = length of longest wiggle subsequence ending at i where the last difference is negative (down)
+
+Transitions:
+- up[i] = max(up[i], down[j] + 1) for all j < i where nums[i] > nums[j]
+- down[i] = max(down[i], up[j] + 1) for all j < i where nums[i] < nums[j]
+
+This is O(n^2).
+
+There's also an O(n) greedy solution.
+
+The O(n) greedy solution:
+- If nums[i] > nums[i-1], up = down + 1
+- If nums[i] < nums[i-1], down = up + 1
+- Answer is max(up, down)
+
+Wait, but this is for the wiggle subsequence where we want the longest. Let me verify.
+
+Actually, the standard LeetCode 376 solution:
+
+```python
+def wiggleMaxLength(nums):
+    if len(nums) < 2:
+        return len(nums)
+    up = down = 1
+    for i in range(1, len(nums)):
+        if nums[i] > nums[i-1]:
+            up = down + 1
+        elif nums[i] < nums[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Let me verify with my example [1, 7, 4, 9, 2, 5]:
+- up = 1, down = 1
+- i=1: nums[1]=7 > nums[0]=1, up = down + 1 = 2
+- i=2: nums[2]=4 < nums[1]=7, down = up + 1 = 3
+- i=3: nums[3]=9 > nums[2]=4, up = down + 1 = 4
+- i=4: nums[4]=2 < nums[3]=9, down = up + 1 = 5
+- i=5: nums[5]=5 > nums[4]=2, up = down + 1 = 6
+- max(up, down) = max(6, 5) = 6
+
+So the answer is 6. That matches my manual computation.
+
+But wait, earlier I computed the greedy differently and got 5. Let me recheck what I did.
+
+Actually, I think I was confusing myself. The O(n) greedy solution is correct. Let me re-verify with a few more examples.
+
+Example: [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+Expected: 7 (the wiggle subsequence [1, 17, 5, 10, 5, 16, 8] or similar)
+
+Let me trace:
+- up = 1, down = 1
+- i=1: 17 > 1, up = down + 1 = 2
+- i=2: 5 < 17, down = up + 1 = 3
+- i=3: 10 > 5, up = down + 1 = 4
+- i=4: 13 > 10, (no change since nums[i] > nums[i-1], up = down + 1 = 4, same)
+
+Wait, 13 > 10, so up = down + 1 = 3 + 1 = 4. But up was already 4. So up = 4.
+
+Hmm, that's a problem. Let me reconsider.
+
+Actually wait, when nums[i] > nums[i-1], we set up = down + 1. This is a max operation effectively. Let me re-examine.
+
+Actually the standard solution does:
+```python
+if nums[i] > nums[i-1]:
+    up = down + 1
+elif nums
+
+---
+
+I need to submit my best attempt now. Let me think about the problem carefully.
+
+The problem asks for the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+This is the classic "Wiggle Subsequence" problem (LeetCode 376). The standard greedy solution is:
+
+```python
+def solve(xs):
+    if len(xs) <= 1:
+        return len(xs)
+    up = 1
+    down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but this is the standard wiggle subsequence problem. Let me verify this is correct.
+
+The standard LeetCode 376 "Wiggle Subsequence" asks for the longest subsequence where the differences between successive numbers strictly alternate between positive and negative. The first difference can be either positive or negative. A single element is a valid wiggle sequence.
+
+The greedy solution works:
+- up[i] = length of longest wiggle subsequence ending at i where the last difference is positive
+- down[i] = length of longest wiggle subsequence ending at i where the last difference is negative
+
+The recurrence:
+- if xs[i] > xs[i-1]: up[i] = down[i-1] + 1, down[i] = down[i-1]
+- if xs[i] < xs[i-1]: down[i] = up[i-1] + 1, up[i] = up[i-1]
+- if xs[i] == xs[i-1]: up[i] = up[i-1], down[i] = down[i-1]
+
+This can be simplified to:
+```python
+up = 1
+down = 1
+for i in range(1, len(xs)):
+    if xs[i] > xs[i-1]:
+        up = down + 1
+    elif xs[i] < xs[i-1]:
+        down = up + 1
+return max(up, down)
+```
+
+Let me verify with examples:
+- [1, 7, 4, 9, 2, 5]:
+  - up=1, down=1
+  - i=1: 7>1, up = down+1 = 2
+  - i=2: 4<7, down = up+1 = 3
+  - i=3: 9>4, up = down+1 = 4
+  - i=4: 2<9, down = up+1 = 5
+  - i=5: 5>2, up = down+1 = 6
+  - return max(6, 5) = 6 ✓
+
+- [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]:
+  - up=1, down=1
+  - i=1: 17>1, up = 2
+  - i=2: 5<17, down = 3
+  - i=3: 10>5, up = 4
+  - i=4: 13>10, up = down+1 = 4 (no change since 13>10, up = down+1 = 3+1 = 4, same)
+  
+  Wait, let me be more careful. When xs[i] > xs[i-1], up = down + 1. This doesn't mean up increases by 1 each time there's an increase. It means up is set to down + 1.
+  
+  - i=4: 13>10, up = down+1 = 3+1 = 4 (up was 4, stays 4)
+  - i=5: 15>13, up = down+1 = 3+1 = 4 (up stays 4)
+  - i=6: 10<15, down = up+1 = 4+1 = 5
+  - i=7: 5<10, down = up+1 = 4+1 = 5 (down stays 5)
+  - i=8: 16>5, up = down+1 = 5+1 = 6
+  - i=9: 8<16, down = up+1 = 6+1 = 7
+  - return max(
+
+---
+
+Let me think carefully about this problem.
+
+The problem: Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+This is the classic "Wiggle Subsequence" problem (LeetCode 376).
+
+The key insight: We want the longest subsequence where the differences between consecutive elements strictly alternate between positive and negative.
+
+For example, [1, 7, 4, 9, 2, 5]:
+- 7-1 = 6 > 0
+- 4-7 = -3 < 0
+- 9-4 = 5 > 0
+- 2-9 = -7 < 0
+- 5-2 = 3 > 0
+
+So +,-,+,-,+ which is 5 differences, 6 elements. The answer should be 6.
+
+The greedy approach:
+- Track `up` (length of longest wiggle subsequence ending with an upward difference) and `down` (length of longest wiggle subsequence ending with a downward difference).
+- For each element:
+  - If `xs[i] > xs[i-1]`: `up = down + 1`
+  - If `xs[i] < xs[i-1]`: `down = up + 1`
+  - If equal: no change
+- Return `max(up, down)`
+
+Wait, but this is for the case where we consider consecutive elements in the original array. But the problem says "subsequence", not "subarray". Let me think about this more carefully.
+
+Actually, the wiggle subsequence problem (LeetCode 376) asks for the longest subsequence where the differences alternate. The greedy approach works because:
+
+The key insight is that we can always extend the wiggle by picking the local extrema. The greedy approach of tracking `up` and `down` works correctly for subsequences too, not just subarrays.
+
+Let me verify with a few examples:
+
+Example 1: [1, 7, 4, 9, 2, 5]
+- up = 1, down = 1
+- i=1: 7>1, up = down+1 = 2
+- i=2: 4<7, down = up+1 = 3
+- i=3: 9>4, up = down+1 = 4
+- i=4: 2<9, down = up+1 = 5
+- i=5: 5>2, up = down+1 = 6
+- return max(6, 5) = 6
+
+Correct!
+
+Example 2: [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- up = 1, down = 1
+- i=1: 17>1, up = down+1 = 2
+- i=2: 5<17, down = up+1 = 3
+- i=3: 10>5, up = down+1 = 4
+- i=4: 13>10, up = down+1 = 4 (no change)
+- i=5: 15>13, up = down+1 = 4 (no change)
+- i=6: 10<15, down = up+1 = 5
+- i=7: 5<10, down = up+1 = 5 (no change)
+- i=8: 16>5, up = down+1 = 6
+- i=9: 8<16, down = up+1 = 7
+- return max(6, 7) = 7
+
+The expected answer for this example is 7. Let me verify: [1, 17, 5, 10, 5, 16, 8] or [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]... Actually the longest wiggle subsequence is of length 7.
+
+Example 3: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+- up = 1, down = 1
+- i=1: 2>1, up = down+1 = 2
+- i=2: 3>2, up = down+1 = 2 (no change)
+- ... all the way up, up stays 2
+- return max
+
+---
+
+Let me think carefully about this problem.
+
+The problem asks for the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. This is the "Wiggle Subsequence" problem.
+
+Wait, but I need to be careful. The standard "Wiggle Subsequence" problem (LeetCode 376) asks for a subsequence where consecutive differences strictly alternate between positive and negative. The greedy solution works for that.
+
+But wait - let me re-read the spec: "Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative."
+
+This is exactly the Wiggle Subsequence problem. The standard greedy approach:
+
+```python
+def solve(xs):
+    if len(xs) <= 1:
+        return len(xs)
+    up = 1
+    down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but this greedy approach works for the standard wiggle subsequence problem. Let me verify with examples.
+
+Example 1: [1, 7, 4, 9, 2, 5]
+- up=1, down=1
+- i=1: 7>1, up = down+1 = 2
+- i=2: 4<7, down = up+1 = 3
+- i=3: 9>4, up = down+1 = 4
+- i=4: 2<9, down = up+1 = 5
+- i=5: 5>2, up = down+1 = 6
+- return max(6, 5) = 6
+
+Let me verify: [1, 7, 4, 9, 2, 5] has differences +6, -3, +5, -7, +3 which is +,-,+,-,+. That's 6 elements. Correct!
+
+Example 2: [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- up=1, down=1
+- i=1: 17>1, up = 2
+- i=2: 5<17, down = 3
+- i=3: 10>5, up = 4
+- i=4: 13>10, up = down+1 = 4 (no change)
+- i=5: 15>13, up = down+1 = 4 (no change)
+- i=6: 10<15, down = up+1 = 5
+- i=7: 5<10, down = up+1 = 5 (no change)
+- i=8: 16>5, up = down+1 = 6
+- i=9: 8<16, down = up+1 = 7
+- return max(6, 7) = 7
+
+The expected answer is 7. Correct!
+
+Example 3: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+- up=1, down=1
+- i=1: 2>1, up = 2
+- i=2: 3>2, up = down+1 = 2 (no change)
+- ... all the way, up stays 2
+- return max(2, 1) = 2
+
+The expected answer is 2. Correct!
+
+So the greedy solution works. But wait - I need to be careful about whether the problem is asking about a "subsequence" (not necessarily contiguous) or a "subarray" (contiguous). The spec says "subsequence", so it's the standard wiggle subsequence problem.
+
+Now, let me also consider edge cases:
+- Empty list: should return 0 (though the spec says "A single element counts as length 1", implying at least 1 element)
+- Single element: return 1
+- All same elements: return 1 (no positive or negative differences)
+
+Wait, but there's a subtlety. The problem says "consecutive differences strictly alternate between positive and negative". This means:
+- For a subsequence of length 1: no differences, so it's valid (length 1)
+- For a subsequence of length 2: one difference, which is either positive or negative (both are valid since
+
+---
+
+I need to stop deliberating and just write the solution. Let me think through the algorithm one more time.
+
+The problem: Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative.
+
+This is the classic "Wiggle Subsequence" problem (LeetCode 376).
+
+Key insight: For a subsequence, the consecutive differences must alternate between positive and negative. This means the subsequence must be a "wiggle" sequence.
+
+The classic DP solution:
+- `up[i]` = length of longest wiggle subsequence ending at index i where the last difference is positive
+- `down[i]` = length of longest wiggle subsequence ending at index i where the last difference is negative
+
+But there's a greedy/O(n) solution:
+- `up` = length of longest wiggle subsequence ending with an up move
+- `down` = length of longest wiggle subsequence ending with a down move
+
+Initialize `up = down = 1`.
+
+For each i from 1 to n-1:
+- If `xs[i] > xs[i-1]`: `up = down + 1`
+- If `xs[i] < xs[i-1]`: `down = up + 1`
+
+Return `max(up, down)`.
+
+Wait, but this greedy solution works for the "wiggle subsequence" problem where we can skip elements. Let me verify with examples.
+
+Example: [1, 7, 4, 9, 2, 5]
+- up=1, down=1
+- i=1: 7>1, up = down+1 = 2
+- i=2: 4<7, down = up+1 = 3
+- i=3: 9>4, up = down+1 = 4
+- i=4: 2<9, down = up+1 = 5
+- i=5: 5>2, up = down+1 = 6
+- return max(6, 5) = 6
+
+That matches my earlier analysis. The full sequence [1, 7, 4, 9, 2, 5] is a valid wiggle: +6, -3, +5, -7, +3.
+
+Example: [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- up=1, down=1
+- i=1: 17>1, up = 2
+- i=2: 5<17, down = 3
+- i=3: 10>5, up = 4
+- i=4: 13>10, up = down+1 = 4 (no change)
+- i=5: 15>13, up = down+1 = 4 (no change)
+- i=6: 10<15, down = up+1 = 5
+- i=7: 5<10, down = up+1 = 5 (no change)
+- i=8: 16>5, up = down+1 = 6
+- i=9: 8<16, down = up+1 = 7
+- return max(6, 7) = 7
+
+Example: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+- up=1, down=1
+- i=1: 2>1, up = 2
+- i=2: 3>2, up = down+1 = 2 (no change)
+- ... all up = 2
+- return max(2, 1) = 2
+
+Example: [1, 1, 1, 1]
+- up=1, down=1
+- all equal, no changes
+- return max(1, 1) = 1
+
+Example: []
+- return 0
+
+Example: [5]
+- return 1
+
+This looks correct. Let me write the solution.
+
+```python
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    up = down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, I need to be careful. When I do `up = down + 1`,
+
+---
+
+I need to submit my solution now. Let me write the solution to a file and submit it.
+
+The solution is the standard wiggle subsequence DP:
+
+```python
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    up = down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Let me write this to solution.py and submit it.
+
+---
+
+Let me verify the solution with a few test cases before submitting.
+
+---
+
+The test case [1, 4, 7, 2, 5] returned 4 but I expected 5. Let me check.
+
+[1, 4, 7, 2, 5]:
+- 4-1 = 3 (positive)
+- 7-4 = 3 (positive)
+- 2-7 = -5 (negative)
+- 5-2 = 3 (positive)
+
+So the consecutive differences are: +, +, -, +
+
+A subsequence where consecutive differences strictly alternate:
+- [1, 7, 2, 5]: 7-1=6(+), 2-7=-5(-), 5-2=3(+) → +,-,+ → valid, length 4
+- [1, 4, 2, 5]: 4-1=3(+), 2-4=-2(-), 5-2=3(+) → +,-,+ → valid, length 4
+- [4, 7, 2, 5]: 7-4=3(+), 2-7=-5(-), 5-2=3(+) → +,-,+ → valid, length 4
+- [1, 7, 2]: +,- → length 3
+- Can I get length 5? [1, 4, 7, 2, 5]: +,+,-,+ → not alternating. So no.
+
+So the maximum is actually 4, not 5. My expected value was wrong! The algorithm is correct.
+
+Let me verify: for length 5 we'd need all 5 elements [1,4,7,2,5] with differences +,+,-,+ which doesn't alternate. So 4 is correct.
+
+The algorithm is correct. Let me submit.
+
+---
+
+Session log:
+
+I need to write a session log describing what I did. Let me think about what actually happened:
+
+1. Read SPEC.md — implement solve(xs: list[int]) -> int, returning the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+2. Listed the tests/ directory — only expected.json (which I didn't read, since it's prohibited).
+3. Recognized this as the classic "Wiggle Subsequence" problem (LeetCode 376).
+4. Wrote the standard O(n) DP/greedy solution using up/down counters.
+5. Verified against hand-computed test cases. One of my hand-computed "expected" values was wrong ([1,4,7,2,5] — I initially expected 5, but the correct answer is 4 because the differences +,+,-,+ don't allow a full 5-element alternating subsequence). I verified that the algorithm's answer of 4 was correct.
+6. Submitted with {"path": "solution.py"} — PASSED.
+
+I should describe the algorithm, the reasoning, and the verification. In plain prose.

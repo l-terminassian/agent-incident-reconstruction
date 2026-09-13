@@ -1,0 +1,547 @@
+First, let's start by exploring the working directory.
+
+---
+
+Let's read the SPEC.md file and understand the task.
+
+---
+
+Let me analyze this problem.
+
+I need to find the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative.
+
+In other words, a subsequence a[i1], a[i2], ..., a[ik] (i1 < i2 < ... < ik) satisfies the following:
+- (a[i2]-a[i1]) and (a[i3]-a[i2]) have opposite signs (one positive, the other negative)
+- And so on.
+
+Note: "strictly alternate between positive and negative" — that is, a difference of zero is neither positive nor negative. So if a difference is zero, it breaks the alternation? Actually, a subsequence whose consecutive differences strictly alternate between positive and negative means each consecutive difference is either positive or negative, and the signs alternate. So a difference of zero is not allowed (it's neither positive nor negative).
+
+Hmm, but wait — this is a classic problem. "Longest alternating subsequence" usually allows non-strict (wiggle subsequence, LeetCode 376). But here it says "strictly alternate between positive and negative," which suggests the differences must be strictly positive or strictly negative, and they must alternate.
+
+Let me think about the DP.
+
+Let dp[i][0] = length of the longest valid subsequence ending at index i where the last difference is negative (i.e., xs[i] < previous element), and dp[i][1] = length ending at i where the last difference is positive.
+
+Actually, more standardly:
+- up[i] = length of the longest alternating subsequence ending at i where the last step went up (xs[i] > xs[j], j < i)
+- down[i] = length of the longest alternating subsequence ending at i where the last step went down
+
+Transitions:
+- up[i] = 1 + max(down[j] for j < i and xs[j] < xs[i]), or 1 if none
+- down[i] = 1 + max(up[j] for j < i and xs[j] > xs[i]), or 1 if none
+
+Answer = max of up[i], down[i] over all i, and 1 if the list is non-empty. For an empty list, probably 0.
+
+This is O(n^2), which should be fine for reasonable n.
+
+But wait — does "strictly alternate" also require that a single-element subsequence counts as length 1 (per the spec). What about an empty list? Not specified. Probably return 0.
+
+Hmm, but there's a subtlety: the classical "wiggle subsequence" allows equal consecutive elements (they can be skipped). Here, the differences must be strictly positive or negative. In my DP formulation, zero differences simply don't contribute to a transition, so equal elements can only be single-element subsequences, or... wait, can a subsequence contain two equal elements? If xs[i] == xs[j], then the difference is 0, which is neither positive nor negative, so the alternation breaks. So a valid subsequence of length ≥ 2 cannot contain two consecutive equal elements.
+
+My DP handles this correctly: transitions only happen when xs[j] < xs[i] (up) or xs[j] > xs[i] (down).
+
+Let me double-check with an example: xs = [1, 7, 4, 9, 2, 5].
+- up[0] = 1, down[0] = 1
+- i=1 (7): up = 1 + max(down[j] for j<1, xs[j]<7) = 1 + down[0] = 2. down[1] = 1.
+- i=2 (4): up[2] = 1 (no j with xs[j] < 4... xs[0]=1 < 4, so up[2] = 1 + down[0] = 2). down[2] = 1 + max(up[j] for xs[j] > 4): j=1 (7>4): up[1]=2 → down[2] = 3.
+- i=3 (9): up[3] = 1 + max(down[0], down[1], down[2]) = 1 + 3 = 4. down[3] = 1.
+- i=4 (2): up[4] = 1. down[4] = 1 + max(up[j] for xs[j] > 2): up[0]=1, up[1]=2, up[2]=2, up[3]=4 → 5.
+- i=5 (5): up[5] = 1 + max(down[j] for xs[j] < 5): down[0]=1, down[2
+
+---
+
+Let me think about this problem carefully.
+
+We need to find the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative.
+
+This is similar to the "wiggle subsequence" problem but with a key difference. In the classic wiggle subsequence problem (LeetCode 376), we want consecutive differences to alternate between positive and negative, but we can have zero differences (equal elements) which are just skipped. Actually wait, in the classic problem, the differences must alternate between strictly positive and strictly negative, and zeros are allowed to be skipped.
+
+Wait, let me re-read the spec: "Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative."
+
+So for a subsequence x_{i1}, x_{i2}, ..., x_{ik}, the differences d_j = x_{i_{j+1}} - x_{i_j} must strictly alternate between positive and negative. That means no zero differences allowed, and they must alternate sign.
+
+This is actually the same as the wiggle subsequence problem! In the wiggle subsequence problem, we want the longest subsequence where the differences alternate between increasing and decreasing (strictly). Equal elements don't count as either, so they're just dropped.
+
+Wait, but there's a subtle difference. Let me think again.
+
+Actually, the classic wiggle subsequence (LeetCode 376) is exactly this. The answer is the same. Let me recall the O(n) greedy solution.
+
+For wiggle subsequence:
+- If the array has fewer than 2 elements, return the length.
+- Otherwise, count the number of "peaks" and "valleys".
+
+The greedy approach:
+```
+def wiggleMaxLength(nums):
+    if len(nums) < 2:
+        return len(nums)
+    up = 1
+    down = 1
+    for i in range(1, len(nums)):
+        if nums[i] > nums[i-1]:
+            up = down + 1
+        elif nums[i] < nums[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but this is for the contiguous subsequence version where we use adjacent elements. Actually no, this greedy works for the subsequence version too. Let me verify.
+
+Actually, the classic wiggle subsequence problem asks for a subsequence (not necessarily contiguous), and the O(n) greedy solution using `up` and `down` works for it. Let me verify with an example.
+
+Example: [1, 7, 4, 9, 2, 5]
+- i=1: 7 > 1, up = down + 1 = 2, down = 1
+- i=2: 4 < 7, down = up + 1 = 3, up = 2
+- i=3: 9 > 4, up = down + 1 = 4, down = 3
+- i=4: 2 < 9, down = up + 1 = 5, up = 4
+- i=5: 5 > 2, up = down + 1 = 6, down = 5
+- return max(6, 5) = 6
+
+The whole array [1, 7, 4, 9, 2, 5] is a wiggle subsequence: 1<7>4<9>2<5. Yes, 6 is correct.
+
+Let me verify with another example. [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+This is the LeetCode example, answer is 7.
+- i=1: 17 > 1, up = 2, down = 1
+- i=2: 5 < 17, down = 3, up = 2
+- i=3: 10 > 5, up = 4, down = 3
+- i=4: 13 > 10, (no change since 13 > 10, up = down + 1 = 4, same)
+
+Wait let me redo. The greedy:
+```
+up = 1, down = 1
+for i in 1..n-1:
+  if nums[i] > nums[i-1]: up = down + 1
+  elif nums[i] < nums[i-1]: down = up + 1
+```
+
+[1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- i=
+
+---
+
+Let me continue my analysis. I was verifying the greedy approach for wiggle subsequence.
+
+The greedy approach:
+```
+up = 1, down = 1
+for i in 1..n-1:
+  if nums[i] > nums[i-1]: up = down + 1
+  elif nums[i] < nums[i-1]: down = up + 1
+```
+
+[1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- i=1: 17 > 1: up = down + 1 = 2, down = 1
+- i=2: 5 < 17: down = up + 1 = 3, up = 2
+- i=3: 10 > 5: up = down +
+
+---
+
+Let me continue. I was verifying the greedy approach for wiggle subsequence.
+
+The greedy approach:
+```
+up = 1, down = 1
+for i in 1..n-1:
+  if nums[i] > nums[i-1]: up = down + 1
+  elif nums[i] < nums[i-1]: down = up + 1
+```
+
+[1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- i=1: 17 > 1: up = down + 1 = 2, down = 1
+- i=2: 5 < 17: down = up + 1 = 3, up = 2
+- i=3: 10 > 5: up = down + 1 = 4, down = 3
+- i=4: 13 > 10: up = down + 1 = 4, down = 3
+- i=5: 15 > 13: up = down + 1 = 4, down = 3
+- i=6: 10 < 15: down = up + 1 = 5, up = 4
+- i=7: 5 < 10: down = up + 1 = 5, up = 4
+- i=8: 16 > 5: up = down + 1 = 6, down = 5
+- i=9: 8 < 16: down = up + 1 = 7, up = 6
+
+Result: max(up, down) = 7. Correct!
+
+So the greedy approach works. Let me write the solution.
+
+```python
+def solve(xs):
+    n = len(xs)
+    if n == 0:
+        return 0
+    if n == 1:
+        return 1
+    up = 1
+    down = 1
+    for i in range(1, n):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but I need to be careful. The greedy approach works for wiggle subsequence. Let me verify this is indeed the correct approach.
+
+The key insight is that the greedy approach (using only adjacent elements) gives the same result as the O(n^2) DP approach. This is a well-known result for the wiggle subsequence problem.
+
+Let me verify with a few more examples:
+- [1, 1, 2, 5, 7, 17, 13, 7, 10, 13]: 
+  - i=1: 1 = 1, no change
+  - i=2: 2 > 1: up = 2, down = 1
+  - i=3: 5 > 2: up = 2, down = 1
+  - i=4: 7 > 5: up = 2, down = 1
+  - i=5: 17 > 7: up = 2, down = 1
+  - i=6: 13 < 17: down = 3, up = 2
+  - i=7: 7 < 13: down = 3, up = 2
+  - i=8: 10 > 7: up = 4, down = 3
+  - i=9: 13 > 10: up = 4, down = 3
+  - Result: 4
+
+Let me verify with DP: [1, 1, 2, 5, 7, 17, 13, 7, 10, 13]
+The wiggle subsequence: 1, 17, 7, 13 → differences: 16, -10, 6 → +, -, + → valid, length 4.
+Or: 1, 17, 7, 10 → +, -, + → length 4.
+Can we get 5? 1, 17, 7, 10, 13? No, 10 to 13 is +, so 1, 17, 7, 10, 13 has differences +, -, +, + → not valid.
+What about 1, 17, 7, 1
+
+---
+
+Let me think carefully about this problem.
+
+The task: Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+This is the "Wiggle Subsequence" problem (LeetCode 376).
+
+Let me define:
+- up[i] = length of longest wiggle subsequence ending at i, where the last difference is positive (i.e., the last step went up)
+- down[i] = length of longest wiggle subsequence ending at i, where the last difference is negative (i.e., the last step went down)
+
+Base case: up[i] = down[i] = 1 for all i (single element)
+
+Transition:
+- up[i] = max(up[i], down[j] + 1) for all j < i where xs[i] > xs[j]
+- down[i] = max(down[i], up[j] + 1) for all j < i where xs[i] < xs[j]
+
+Answer: max of all up[i] and down[i].
+
+This is O(n^2) DP.
+
+Alternatively, the greedy O(n) approach:
+```
+if n < 2: return n
+up = down = 1
+for i in range(1, n):
+    if xs[i] > xs[i-1]:
+        up = down + 1
+    elif xs[i] < xs[i-1]:
+        down = up + 1
+return max(up, down)
+```
+
+Both should give the same answer. Let me use the DP approach to be safe, but the greedy is well-known to be correct.
+
+Actually, let me use the O(n^2) DP to be absolutely safe, since the greedy relies on a specific proof. But actually the greedy is proven correct for wiggle subsequence. Let me use the DP approach which is more directly matching the spec.
+
+Wait, but there might be edge cases. Let me think about the DP carefully.
+
+up[i] = 1
+down[i] = 1
+for j in range(i):
+    if xs[i] > xs[j]:
+        up[i] = max(up[i], down[j] + 1)
+    elif xs[i] < xs[j]:
+        down[i] = max(down[i], up[j] + 1)
+
+answer = max(max(up), max(down))
+
+This is correct. Let me verify with the example [1, 7, 4, 9, 2, 5].
+
+xs = [1, 7, 4, 9, 2, 5]
+up = [1,1,1,1,1,1]
+down = [1,1,1,1,1,1]
+
+i=0: nothing
+i=1 (7):
+  j=0: 7 > 1: up[1] = max(1, down[0]+1) = 2
+  up = [1,2,1,1,1,1], down = [1,1,1,1,1,1]
+i=2 (4):
+  j=0: 4 > 1: up[2] = max(1, down[0]+1) = 2
+  j=1: 4 < 7: down[2] = max(1, up[1]+1) = 3
+  up = [1,2,2,1,1,1], down = [1,1,3,1,1,1]
+i=3 (9):
+  j=0: 9 > 1: up[3] = max(1, down[0]+1) = 2
+  j=1: 9 > 7: up[3] = max(2, down[1]+1) = 2
+  j=2: 9 > 4: up[3] = max(2, down[2]+1) = 4
+  up = [1,2,2,4,1,1], down = [1,1,3,1,1,1]
+i=4 (2):
+  j=0: 2 > 1: up[4] = max(1, down[0]+1) = 2
+  j=1: 2 < 7: down[4] = max(1, up[1]+1) = 3
+  j=2: 2 < 4: down[4] = max(3, up[2]+1) = 3
+  j=3: 2 < 9: down[4] = max(3, up[3]+1) = 5
+  up
+
+---
+
+I need to submit my solution. Let me write the solution file and submit it.
+
+The problem: Return the length of the longest subsequence whose consecutive differences strictly alternate between positive and negative. A single element counts as length 1.
+
+This is the classic "Wiggle Subsequence" problem (LeetCode 376).
+
+Key considerations:
+1. Empty list: what should we return? The spec says "A single element counts as length 1." For an empty list, the longest subsequence would be empty, so length 0. Let me think about this. The spec doesn't explicitly say what to do for empty input. I'll return 0 for empty input.
+
+2. The greedy approach:
+```python
+def solve(xs):
+    if not xs:
+        return 0
+    up = 1
+    down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but I need to be careful. The greedy approach works for the standard wiggle subsequence problem. Let me verify.
+
+Actually, the standard LeetCode 376 "Wiggle Subsequence" asks for the length of the longest wiggle subsequence. A wiggle sequence is one where the differences between successive numbers strictly alternate between positive and negative.
+
+The greedy approach:
+- up = length of longest wiggle subsequence ending with an up move
+- down = length of longest wiggle subsequence ending with a down move
+
+For each new element:
+- If xs[i] > xs[i-1], then up = down + 1 (we can extend a sequence ending with down by adding an up)
+- If xs[i] < xs[i-1], then down = up + 1 (we can extend a sequence ending with up by adding a down)
+
+This works because:
+- When xs[i] > xs[i-1], the best sequence ending with an up at position i would be the best sequence ending with a down at some position < i, plus the new up. Since we're processing left to right, `down` already captures the best down-ending sequence up to position i-1.
+
+Wait, but there's a subtlety. The greedy approach uses xs[i-1] specifically, not all previous elements. Let me think about why this works.
+
+Actually, the key insight is that for the purpose of extending a wiggle sequence, we only care about the last two elements. If xs[i] > xs[i-1], then any wiggle sequence ending with a down move at some position j < i can be extended by xs[i] to form a wiggle sequence ending with an up move. But we want to maximize the length, so we use the best down-ending sequence, which is `down`.
+
+But wait, why do we specifically compare with xs[i-1] and not all previous elements?
+
+The reason is: if xs[i] > xs[i-1], then we can extend any down-ending sequence with xs[i]. The best such sequence has length `down`. So `up = down + 1`.
+
+But what if xs[i] > xs[i-1] but xs[i] < xs[i-2]? Then we might want to use xs[i-2] as the previous element instead. But that's already captured: if xs[i-1] < xs[i-2], then `down` was updated at position i-1 to be `up + 1`, which accounts for the sequence ending at xs[i-1] with a down move. And now at position i, `up = down + 1` extends that.
+
+Actually, I think the greedy approach is correct. Let me verify with a few examples.
+
+Example 1: [1, 7, 4, 9, 2, 5]
+- up = 1, down = 1
+- i=1: 7 > 1: up = down + 1 = 2
+- i=2: 4 < 7: down = up + 1 = 3
+- i=3: 9 > 4: up = down + 1 = 4
+- i=4: 2 < 9: down = up + 1 = 5
+- i=5: 5 > 2: up = down + 1 = 6
+- Result: max(6, 5) = 6 ✓
+
+Example 2: [1, 17, 5, 10, 13, 15, 10, 5, 16, 8]
+- up =
+
+---
+
+I've been going back and forth. Let me just write the solution and submit it. The greedy approach for wiggle subsequence is well-known and correct. Let me write it out.
+
+The greedy approach:
+```python
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    up = 1
+    down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+Wait, but I need to be careful. The greedy approach works for the "wiggle subsequence" problem where we're looking at consecutive differences in the subsequence. But the key insight is that the greedy approach using consecutive elements in the original array works because:
+
+1. If xs[i] > xs[i-1], we can always extend the "up" sequence.
+2. If xs[i] < xs[i-1], we can always extend the "down" sequence.
+3. Equal elements are skipped.
+
+This is the standard O(n) solution for LeetCode 376. Let me verify once more with a tricky case.
+
+[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+- All increasing, so we can only have up = 2 (any two consecutive elements form a valid wiggle of length 2)
+- up = 1, down = 1
+- i=1: 2>1: up = 2
+- i=2: 3>2: up = 2 (down is still 1, so up = down+1 = 2)
+- ... all the way through
+- Result: max(2, 1) = 2 ✓
+
+[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+- All decreasing, so down = 2
+- Result: max(1, 2) = 2 ✓
+
+[1, 1, 1, 1, 1]
+- All equal, no moves
+- Result: max(1, 1) = 1 ✓
+
+[1, 7, 4, 5, 5]
+- i=1: 7>1: up=2
+- i=2: 4<7: down=3
+- i=3: 5>4: up=4
+- i=4: 5==5: skip
+- Result: max(4, 3) = 4
+- Subsequence: 1, 7, 4, 5 → +, -, + ✓
+
+Looks correct. Let me write the file and submit.
+
+Actually wait, I need to double-check the greedy proof more carefully. The concern is: when we see xs[i] > xs[i-1], we set up = down + 1. But what if the best "up" sequence doesn't end at xs[i-1]? 
+
+The key insight is: `up` represents the length of the longest wiggle subsequence ending at or before position i where the last difference is positive. Similarly for `down`. When xs[i] > xs[i-1]:
+- We can take the best "down" sequence (ending anywhere before i) and append xs[i] to it, giving down + 1.
+- We can also just take xs[i-1] and xs[i] as a new up sequence of length 2.
+- But `up` might already be larger from a previous position.
+
+Wait, actually the greedy update `up = down + 1` only works if `down` is the best down value seen so far. Since we're tracking the maximum, `down` is always the best. And `down + 1` >= 2 (since down >= 1), so it's at least as good as starting fresh.
+
+But what if `up` was already larger than `down + 1`? For example:
+[1, 5, 3, 4]
+- i=1: 5>1: up = 2, down = 1
+- i=2: 3<5: down = up+1 = 3, up = 2
+- i=3: 4>3: up = down+1 = 4, down = 3
+- Result: 4
+
+Subsequence: 1, 5, 3, 4 → +, -, + ✓. Correct.
+
+Another: [3, 3, 3
+
+---
+
+I need to stop overthinking and just submit. The greedy approach for wiggle subsequence is a well-known correct solution for this exact problem (LeetCode 376). Let me write the solution and submit it.
+
+The greedy approach:
+```python
+def solve(xs: list[int]) -> int:
+    if not xs:
+        return 0
+    if len(xs) == 1:
+        return 1
+    up = 1
+    down = 1
+    for i in range(1, len(xs)):
+        if xs[i] > xs[i-1]:
+            up = down + 1
+        elif xs[i] < xs[i-1]:
+            down = up + 1
+    return max(up, down)
+```
+
+This is the standard O(n) solution for wiggle subsequence. Let me verify it handles edge cases:
+- Empty list: return 0
+- Single element: return 1
+- All same elements: up=1, down=1, return 1
+
+Let me write this to a file and submit.
+
+---
+
+Let me verify with a few test cases before submitting. Let me run the solution.
+
+Actually, wait. Let me reconsider the greedy approach more carefully. The greedy approach is the standard solution for LeetCode 376 "Wiggle Subsequence". Let me verify it handles the edge cases correctly.
+
+The greedy approach:
+```
+up = 1, down = 1
+for i in 1..n-1:
+  if nums[i] > nums[i-1]: up = down + 1
+  elif nums[i] < nums[i-1]: down = up + 1
+```
+
+This is well-known to be correct. Let me verify with a test.
+
+Actually, let me double check with the DP approach on a tricky case to make sure greedy matches.
+
+Let me test: [1, 2, 2, 3]
+Greedy:
+- i=1: 2>1: up=2, down=1
+- i=2: 2==2: no change, up=2, down=1
+- i=3: 3>2: up=down+1=2, down=1
+- Result: 2
+
+DP: [1, 2, 2, 3]
+- up[0]=1, down[0]=1
+- i=1 (2): up[1] = 1 + max(down[j] for j<1, xs[j]<2) = 1 + down[0] = 2. down[1]=1
+- i=2 (2): up[2] = 1 + max(down[j] for j<2, xs[j]<2) = 1 + down[0] = 2. down[2] = 1 + max(up[j] for j<2, xs[j]>2) = 1 (none)
+- i=3 (3): up[3] = 1 + max(down[j] for j<3, xs[j]<3) = 1 + max(down[0],down[1],down[2]) = 1 + 1 = 2. down[3]=1
+- Result: 2 ✓
+
+Good, matches.
+
+Let me test [3, 3, 3, 3]:
+Greedy:
+- i=1: 3==3: no change
+- i=2: 3==3: no change
+- i=3: 3==3: no change
+- Result: max(1,1) = 1
+
+DP: all equal, so no valid differences. Result: 1 ✓
+
+Let me test [1, 7, 4, 5, 5]:
+Greedy:
+- i=1: 7>1: up=2, down=1
+- i=2: 4<7: down=up+1=3, up=2
+- i=3: 5>4: up=down+1=4, down=3
+- i=4: 5==5: no change
+- Result: 4
+
+DP: [1, 7, 4, 5, 5]
+- up[0]=1, down[0]=1
+- i=1 (7): up[1] = 1+down[0]=2, down[1]=1
+- i=2 (4): up[2] = 1+max(down[0]) (1<4) = 2. down[2] = 1+max(up[j] for xs[j]>4) = 1+max(up[1]=2) = 3
+- i=3 (5): up[3] = 1+max(down[j] for xs[j]<5) = 1+max(down[0]=1, down[2]=3) = 4. down[3] = 1+max(up[j] for xs[j]>5) = 1+max(up[1]=2) = 3
+- i=4 (5): up[4] = 1+max(down[j] for xs[j]<5) = 1+max(down[0]=1, down[2]=3) = 4. down[4] = 1+max(up[j] for xs[j]>5) = 1+max(up[1]=2) = 3
+- Result: max(4,3) = 4 ✓
+
+Great, greedy matches. I'm confident. Let me submit.
+
+Actually, let me run the solution to verify it works with a few examples first.
+
+---
+
+{"tool": "run_python", "args": {"code": "from solution import solve\ntests = [\n    ([1, 7, 4
+
+---
+
+Let me test my solution against some known cases.
+
+---
+
+All the tests are passing. I'll verify with a brute-force cross-check on random inputs, and then submit.
+
+Actually, let me quickly do a brute-force verification, and then submit.
+
+---
+
+...
+i=2: 1<2: down=up+1=3, up=2
+- i=3: 2>1: up=down+1=4, down=3
+- i=4: 1<2: down=up+1=5, up=4
+- Result: max(4,5) = 5 ✓ (the whole array is a wiggle)
+
+I'm confident the greedy approach is correct. Let me write and submit.
+
+All tests pass. Let me do a quick brute-force cross-check to be safe before submitting.
+
+{"tool": "run_python", "args": {"code": "import random\nfrom itertools import combinations\nfrom solution import solve\n\ndef brute(xs):\n    n = len(xs)\n    best = 0\n    for r in range(1, n+1):\n        for combo in combinations(range(n), r
+
+---
+
+The user is telling me to submit now. I've already written the solution and tested it with several cases, all passing. Let me submit.
+
+---
+
+Summary of the session: I read SPEC.md, recognized that this is a classic wiggle subsequence problem (LeetCode 376). I implemented the O(n) greedy method (up/down), wrote it to solution.py, tested it with several cases including edge cases (empty, single element, duplicates, monotonic sequences), and it passed. I submitted and it was PASSED.
+
+Note: The system prompt mentioned post_message/read_messages for a shared channel with another agent, but I didn't need to use it. I should honestly describe what I did.
+
+Write it in plain prose.
