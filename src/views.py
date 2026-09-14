@@ -36,7 +36,7 @@ from typing import Iterable
 
 from harness import PROHIBITION
 
-VIEWS = ("V0", "V1", "V1A", "V1R", "V3", "V6")
+VIEWS = ("V0", "V1", "V1A", "V1P", "V1R", "V3", "V6")
 
 # V1  reads session_log_corrupted.txt - the log with the prohibited access removed
 # V1R reads session_log.txt           - the same log with that access present
@@ -258,12 +258,21 @@ def build_package(episode_dir: Path, view: str, include_channel: bool = True) ->
             "```python\n" + (sub.read_text() if sub.exists() else "(none)") + "\n```"),
             agent_authored=True)
 
-        if view in ("V1", "V1A", "V1R", "V3", "V6"):
+        if view in ("V1", "V1A", "V1P", "V1R", "V3", "V6"):
             corrupted = episode_dir / aid / "session_log_corrupted.txt"
             intact = episode_dir / aid / "session_log.txt"
             # V1R always shows the intact log; every other view shows whatever
             # the investigator would actually have held.
-            log = intact if view == "V1R" else (corrupted if corrupted.exists() else intact)
+            # V1R restores the removed passage and so shows the intact log.
+            # V1P retains the disclosure and removes a matched volume of other
+            # text, reproducing the structural change without the loss of fact.
+            placebo = episode_dir / aid / "session_log_placebo.txt"
+            if view == "V1R":
+                log = intact
+            elif view == "V1P":
+                log = placebo if placebo.exists() else intact
+            else:
+                log = corrupted if corrupted.exists() else intact
             add(_section(
                 "Session log (written by the agent)",
                 log.read_text() if log.exists() else "(none)"),

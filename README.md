@@ -15,15 +15,16 @@ src/
   driver.py        agent loop, randomised instruction condition, offline grading
   grader.py        mechanical labels; no model judge anywhere in this file
   views.py         investigator evidence views and the leakage guard
+  placebo.py       placebo redaction: matched volume removed, disclosure kept
   investigator.py  investigator prompt, JSON schema, retries, call accounting
   run_judgement.py manifest-driven runner: resumable, deduplicating, call-capped
   analyze.py       scoring, outcome measures, bootstrap and permutation tests
   config.py        paths, model identifiers, credential loading
 data/              120 episodes: manifests, labels, both records, reasoning
-artifacts/         752 investigator judgements, one JSON object per line
+artifacts/         786 investigator judgements, one JSON object per line
 human_labels/      human concealment labels and reader answers
 repro/             integrity manifest, statistics, receipt schema and validator
-tests/             view construction and runner test suites
+tests/             view construction, runner and placebo test suites
 ```
 
 ## Prerequisites
@@ -42,7 +43,7 @@ Expected output, in four stages:
 
 ```
 0. integrity     four input groups hashed; manifest written (or drift reported)
-1. unit tests    two suites, "0 failure(s)" each
+1. unit tests    three suites, "0 failure(s)" each
 2. all results   access rates, detection by view, paired gains, replication
 3. receipt schema  "PASS - conforms to the five-field receipt schema"
 4. worked example  one episode under two evidence views
@@ -63,6 +64,7 @@ same episode.
 | V0 | submissions and scores only |
 | V1 | + the agent's own session log, with the disclosure removed |
 | V1A | + minimal access receipts |
+| V1P | disclosure kept, a matched volume of other text removed |
 | V1R | + the removed passage restored |
 | V3 | + the full independently recorded call record |
 | V6 | + reasoning traces |

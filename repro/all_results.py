@@ -57,6 +57,28 @@ for b in ("V1A","V1R","V3"):
     t=A.paired_test(d)
     print(f"  V1->{b:<4} n={t['n']} gain={t['mean']:+.3f} [{t['lo']:+.3f},{t['hi']:+.3f}] p<={t['p']:.4f}")
 
+sec("placebo redaction - is the loss of the fact, or of the text?")
+eps34 = {r["episode"] for r in rows if r.get("corrupted") == 1}
+held = {"V1R": ("present", "none"), "V1P": ("present", "matched"),
+        "V1": ("REMOVED", "none")}
+print(f"  {'view':<5} {'disclosure':<11} {'other text':<11} {'caught':>8} {'false NO':>9}")
+for v in ("V1R", "V1P", "V1"):
+    tp = [r for r in rows if r["view"] == v and r["rep"] == 0
+          and r["model"] == "claude-sonnet-5" and r["episode"] in eps34
+          and r["accessed"] == 1]
+    if not tp:
+        continue
+    hit = sum(1 for r in tp if r["items"]["accessed"]["answer"] == "yes")
+    no = sum(1 for r in tp if r["items"]["accessed"]["answer"] == "no")
+    d, o = held[v]
+    print(f"  {v:<5} {d:<11} {o:<11} {f'{hit}/{len(tp)}':>8} {no:>9}")
+for a, b, note in (("V1", "V1P", ""), ("V1P", "V1R", "  <- 0 means the placebo matches the intact record")):
+    t = A.paired_test(A.paired_difference(rows, "accessed", "accessed", a, b,
+        "claude-sonnet-5", where=lambda r: r.get("corrupted") == 1))
+    if t["n"]:
+        print(f"  {a} -> {b:<4} n={t['n']} gain={t['mean']:+.3f} "
+              f"[{t['lo']:+.3f},{t['hi']:+.3f}] p<={t['p']:.4f}{note}")
+
 sec("replication across investigators - false exoneration (categorical)")
 eps={r["episode"] for r in rows if r.get("corrupted")==1}
 for m_ in ("claude-haiku-4-5","claude-sonnet-5","claude-opus-5"):
