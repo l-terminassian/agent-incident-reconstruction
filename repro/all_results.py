@@ -50,11 +50,23 @@ for v in ("V0","V1","V1A","V3"):
     fa=sum(1 for r in sel if r["accessed"]==0 and r["items"]["accessed"]["answer"]=="yes")
     print(f"  {v:<4} caught {hit}/{len(tp)}   false-NO {no}   insufficient {ie}   false alarms {fa}")
 
+# Repetition 0 is the primary judgement. Every categorical result uses it, so
+# the Brier statistic uses it too: one basis throughout. Repeats exist only for
+# V1, V1A and V1R, so pooling them would also average the two arms of a contrast
+# over different numbers of judgements. `primary` is the filter; `all_reps`
+# reproduces the pooled alternative as a sensitivity check.
+primary = lambda r: r.get("corrupted") == 1 and r["rep"] == 0
+all_reps = lambda r: r.get("corrupted") == 1
+
+
+def gain(view_a, view_b, model="claude-sonnet-5", where=primary):
+    return A.paired_test(A.paired_difference(
+        rows, "accessed", "accessed", view_a, view_b, model, where=where))
+
+
 sec("paired repair of the altered record, ablation sample")
 for b in ("V1A","V1R","V3"):
-    d=A.paired_difference(rows,"accessed","accessed","V1",b,"claude-sonnet-5",
-                          where=lambda r: r.get("corrupted")==1)
-    t=A.paired_test(d)
+    t=gain("V1",b)
     print(f"  V1->{b:<4} n={t['n']} gain={t['mean']:+.3f} [{t['lo']:+.3f},{t['hi']:+.3f}] p<={t['p']:.4f}")
 
 sec("placebo redaction - is the loss of the fact, or of the text?")
@@ -73,8 +85,7 @@ for v in ("V1R", "V1P", "V1"):
     d, o = held[v]
     print(f"  {v:<5} {d:<11} {o:<11} {f'{hit}/{len(tp)}':>8} {no:>9}")
 for a, b, note in (("V1", "V1P", ""), ("V1P", "V1R", "  <- 0 means the placebo matches the intact record")):
-    t = A.paired_test(A.paired_difference(rows, "accessed", "accessed", a, b,
-        "claude-sonnet-5", where=lambda r: r.get("corrupted") == 1))
+    t = gain(a, b)
     if t["n"]:
         print(f"  {a} -> {b:<4} n={t['n']} gain={t['mean']:+.3f} "
               f"[{t['lo']:+.3f},{t['hi']:+.3f}] p<={t['p']:.4f}{note}")
@@ -103,3 +114,18 @@ for m_ in ("claude-haiku-4-5","claude-sonnet-5","claude-opus-5"):
     t=A.paired_test(d)
     print(f"  {m_:<18} ({A.CONFIDENCE_SEMANTICS[m_]:<7}) gain={t['mean']:+.3f} "
           f"[{t['lo']:+.3f},{t['hi']:+.3f}] p<={t['p']:.4f}")
+
+
+sec("sensitivity - pooling both repetitions instead of the primary judgement")
+
+
+def fmt(t):
+    return f"{t['mean']:+.4f} [{t['lo']:+.3f},{t['hi']:+.3f}]"
+
+
+print(f"  {'contrast':<12} {'primary':>24} {'both repetitions':>24}")
+for a, b in (("V1", "V1A"), ("V1", "V1R"), ("V1", "V3"), ("V1", "V1P"), ("V1P", "V1R")):
+    one, both = gain(a, b), gain(a, b, where=all_reps)
+    if one["n"]:
+        print(f"  {a + '->' + b:<12} {fmt(one):>24} {fmt(both):>24}")
+print("  (episodes are the bootstrap cluster either way, so n is 34 in both columns)")
