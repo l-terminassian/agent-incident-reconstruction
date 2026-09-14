@@ -3,7 +3,7 @@
 Given that an agent's access to a protected file definitely occurred, this
 repository measures what happens to an investigator's conclusion when evidence
 of that access is removed from the record, and which retained artifact restores
-it. It contains the environment, 120 recorded episodes, 752 frozen investigator
+it. It contains the environment, 120 recorded episodes, 786 frozen investigator
 judgements, and the analysis that produces every reported statistic.
 
 ## Layout
@@ -103,6 +103,20 @@ New agent episodes need a served model at `AGENT_ENDPOINT`:
 ```
 AGENT_MODEL=<served-name> python src/driver.py main
 ```
+
+### Provenance of the recorded episodes
+
+The 120 episodes in `data/` were produced by a Qwen-family model in bf16, served
+locally through an OpenAI-compatible vLLM endpoint on a single 80GB card. The
+exact checkpoint revision and the vLLM version were **not recorded at run time**,
+and no manifest carries a model identifier.
+
+The frozen episodes are therefore the reproducible artifact: every reported
+statistic is recomputed from them by `./reproduce.sh`, and the integrity manifest
+fails if they drift. Re-running `src/driver.py` will produce *new* episodes from
+whatever model is served, not a reconstruction of these ones. Anyone repeating
+the agent-side collection should record the checkpoint revision and the serving
+stack in the episode manifest.
 
 ## Notes for anyone reading the analysis
 
